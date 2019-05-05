@@ -10,7 +10,10 @@
 int
 sys_fork(void)
 {
-  return fork();
+  int nTickets;
+  if(argint(0, &nTickets))
+    return -1;
+  return fork(nTickets);
 }
 
 int

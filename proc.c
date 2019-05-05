@@ -6,7 +6,8 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
+#define MAX_TICKETS 100
+#define DEFAULT_TICKETS 5
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -38,10 +39,10 @@ struct cpu*
 mycpu(void)
 {
   int apicid, i;
-  
+
   if(readeflags()&FL_IF)
     panic("mycpu called with interrupts enabled\n");
-  
+
   apicid = lapicid();
   // APIC IDs are not guaranteed to be contiguous. Maybe we should have
   // a reverse map, or reserve a register to store &cpus[i].
@@ -124,7 +125,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -178,7 +179,7 @@ growproc(int n)
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
 int
-fork(void)
+fork(int nTickets)
 {
   int i, pid;
   struct proc *np;
@@ -207,6 +208,13 @@ fork(void)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
+
+  if(nTickets > MAX_TICKETS)
+    np->tickets = MAX_TICKETS;
+  else if(nTickets < 1)
+    np->tickets = DEFAULT_TICKETS;
+  else
+    np->tickets = nTickets;
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
@@ -275,7 +283,7 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -322,19 +330,36 @@ wait(void)
 void
 scheduler(void)
 {
+  int totalTickets, sorteado = 1;
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    totalTickets = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+      totalTickets = totalTickets + p->tickets;
+    }
+    if(totalTickets == 0) totalTickets++;
+
+    sorteado = ((sorteado * 123123 + 321321)%totalTickets);
+    totalTickets = sorteado;
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
+      else{
+        totalTickets = totalTickets - p->tickets;
+        if(totalTickets > 0)
+          continue;
+      }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -418,7 +443,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   if(p == 0)
     panic("sleep");
 
