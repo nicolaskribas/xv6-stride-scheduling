@@ -1,12 +1,12 @@
 #include "types.h"
 #include "user.h"
 
-#define NFILHOS 11
+#define NFILHOS 6
 
 int main(){
     int pid, i, n;
 
-    for (i = 0, n = 100; i < NFILHOS; i++, n-=10){
+    for (i = 0, n = 100; i < NFILHOS; i++, n-=20){
         pid = fork(n);
         if(pid == 0){
             for(i = 0; i < 99999999; i++){
@@ -21,7 +21,7 @@ int main(){
       if(pid < 0) break;
     }
     printf(1, "___________________________");
-    for (i = 0, n = 0; i < NFILHOS; i++, n+=10){
+    for (i = 0, n = 0; i < NFILHOS; i++, n+=20){
         pid = fork(n);
         if(pid == 0){
             for(i = 0; i < 99999999; i++){
