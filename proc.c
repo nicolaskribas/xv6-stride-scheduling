@@ -72,7 +72,7 @@ myproc(void) {
 // state required to run in the kernel.
 // Otherwise return 0.
 static struct proc*
-allocproc(void)
+allocproc(int nTickets)
 {
   struct proc *p;
   char *sp;
@@ -89,6 +89,13 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  if(nTickets > MAX_TICKETS)
+    p->tickets = MAX_TICKETS;
+  else if(nTickets < 1)
+    p->tickets = DEFAULT_TICKETS;
+  else
+    p->tickets = nTickets;
+  p->cpu = 0;
 
   release(&ptable.lock);
 
@@ -124,7 +131,7 @@ userinit(void)
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
-  p = allocproc();
+  p = allocproc(DEFAULT_TICKETS);
 
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
@@ -186,7 +193,7 @@ fork(int nTickets)
   struct proc *curproc = myproc();
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if((np = allocproc(nTickets)) == 0){
     return -1;
   }
 
@@ -208,13 +215,6 @@ fork(int nTickets)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
-
-  if(nTickets > MAX_TICKETS)
-    np->tickets = MAX_TICKETS;
-  else if(nTickets < 1)
-    np->tickets = DEFAULT_TICKETS;
-  else
-    np->tickets = nTickets;
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
@@ -347,35 +347,36 @@ scheduler(void)
         continue;
       totalTickets = totalTickets + p->tickets;
     }
-    if(totalTickets == 0) totalTickets++;
+    if(totalTickets > 0){
+      sorteado = (1103515245 * sorteado + 12345);
+      if(sorteado < 0) sorteado *= -1;
+      totalTickets = (sorteado%totalTickets)+1;
 
-    sorteado = ((sorteado * 123123 + 321321)%totalTickets);
-    totalTickets = sorteado;
-
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-      else{
-        totalTickets = totalTickets - p->tickets;
-        if(totalTickets > 0)
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
           continue;
+        else{
+          totalTickets = totalTickets - p->tickets;
+          if(totalTickets > 0)
+            continue;
+        }
+        p->cpu ++;
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
       }
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
     }
-    release(&ptable.lock);
+      release(&ptable.lock);
 
   }
 }
@@ -548,7 +549,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("%d %s %s Tickets: %d CPU: %d ", p->pid, state, p->name, p->tickets, p->cpu);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
