@@ -8,6 +8,7 @@
 #include "spinlock.h"
 #define MAX_TICKETS 100
 #define DEFAULT_TICKETS 5
+#define CONSTANTE 1000
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -90,11 +91,12 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   if(nTickets > MAX_TICKETS)
-    p->tickets = MAX_TICKETS;
+    p->passo = CONSTANTE/MAX_TICKETS;
   else if(nTickets < 1)
-    p->tickets = DEFAULT_TICKETS;
+    p->passo = CONSTANTE/DEFAULT_TICKETS;
   else
-    p->tickets = nTickets;
+    p->passo = CONSTANTE/nTickets;
+  p->passada = 0;
   p->cpu = 0;
 
   release(&ptable.lock);
@@ -319,6 +321,14 @@ wait(void)
   }
 }
 
+void evitaOverflow(){
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    p->passada = p->passo;
+  }
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -330,8 +340,8 @@ wait(void)
 void
 scheduler(void)
 {
-  int totalTickets, sorteado = 1;
   struct proc *p;
+  struct proc *min;
   struct cpu *c = mycpu();
   c->proc = 0;
 
@@ -341,40 +351,38 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    totalTickets = 0;
+    min = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
-      totalTickets = totalTickets + p->tickets;
+      if(min == 0)
+        min = p;
+      else if(min->passada > p->passada || (min->passada == p->passada && min->pid < p->pid))
+        min = p;
+
     }
-    if(totalTickets > 0){
-      sorteado = (1103515245 * sorteado + 12345);
-      if(sorteado < 0) sorteado *= -1;
-      totalTickets = (sorteado%totalTickets)+1;
-
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state == RUNNABLE){
-          totalTickets = totalTickets - p->tickets;
-          if(totalTickets <= 0){
-            p->cpu ++;
-            // Switch to chosen process.  It is the process's job
-            // to release ptable.lock and then reacquire it
-            // before jumping back to us.
-            c->proc = p;
-            switchuvm(p);
-            p->state = RUNNING;
-
-            swtch(&(c->scheduler), p->context);
-            switchkvm();
-
-            // Process is done running for now.
-            // It should have changed its p->state before coming back.
-            c->proc = 0;
-            break;
-          }
-        }
-      }
+    if(min == 0){
+      release(&ptable.lock);
+      continue;
     }
+    p = min;
+    if(2147483647 - p->passo < p->passada)
+      evitaOverflow();
+    p->passada += p->passo;
+    p->cpu ++;
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
+
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
     release(&ptable.lock);
   }
 }
@@ -547,7 +555,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s Tickets: %d CPU: %d ", p->pid, state, p->name, p->tickets, p->cpu);
+    cprintf("%d %s %s Passo: %d Passada: %d CPU: %d ", p->pid, state, p->name, p->passo, p->passada, p->cpu);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
