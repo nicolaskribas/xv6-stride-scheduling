@@ -31,12 +31,31 @@ int father(int i){
     return i/2;
 }
 void bubbleDown(struct pheap *pheap, int i){
-
+  menor = i;
+  if(left(i) < pheap.last){
+    if(pheap.proc[left(i)]->passada < pheap.proc[menor]->passada){
+      menor = left(i);
+    }
+  }
+  if(right(i) < pheap.last){
+    if(pheap.proc[right(i)]->passada < pheap.proc[menor]->passada){
+      menor = right(i);
+    }
+  }
+  if(menor != i){
+    switchNodes(pheap, menor, i);
+    bubbleDown(pheap, menor);
+  }
 
 }
 
 void bubbleUP(struct pheap *pheap, int i){
-
+  if(i != 0){
+    if(pheap.proc[father(i)]->passada > pheap.proc[i]->passada){
+      switchNodes(pheap, father(i), i);
+      bubbleUP(pheap, father(i));
+    }
+  }
 }
 
 struct proc *extract(struct pheap *pheap, int i){
