@@ -15,24 +15,35 @@ struct {
 } ptable;
 
 struct {
-  struct spinlock lock;
   struct proc proc[NPROC];
   int last;
 } pheap;
+int left(int i){
+  return 2*i + 1;
+}
+int right(int i){
+  return 2*i + 2;
+}
+int father(int i){
+  if(i % 2 == 0)
+    return (i - 1)/2;
+  else
+    return i/2;
+}
+void bubbleDown(struct pheap *pheap, int i){
 
-void bubbleDown(struct pheap *pheap){
 
 }
 
-void bubbleUP(struct pheap *pheap){
+void bubbleUP(struct pheap *pheap, int i){
 
 }
 
-struct proc extract(struct pheap *pheap){
-  struct proc *p = pheap.proc;
-  pheap.proc = pheap.proc[pheap.last];
+struct proc *extract(struct pheap *pheap, int i){
+  struct proc *p = pheap.proc[i];
+  pheap.proc[i] = pheap.proc[pheap.last];
   pheap.last--;
-  bubbleDown(pheap);
+  bubbleDown(pheap, i);
   return p;
 }
 
