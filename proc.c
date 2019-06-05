@@ -14,6 +14,33 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+struct {
+  struct spinlock lock;
+  struct proc proc[NPROC];
+  int last;
+} pheap;
+
+void bubbleDown(struct pheap *pheap){
+
+}
+
+void bubbleUP(struct pheap *pheap){
+
+}
+
+struct proc extract(struct pheap *pheap){
+  struct proc *p = pheap.proc;
+  pheap.proc = pheap.proc[pheap.last];
+  pheap.last--;
+  bubbleDown(pheap);
+  return p;
+}
+
+void insert(struct pheap *pheap, struct proc *proc){
+  pheap.proc[++pheap.last] = proc;
+  bubbleUP(pheap);
+}
+
 static struct proc *initproc;
 
 int nextpid = 1;
