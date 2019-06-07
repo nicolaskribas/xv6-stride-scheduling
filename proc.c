@@ -15,7 +15,7 @@ struct {
 } ptable;
 
 struct proc *pheap[NPROC];
-int last;
+int last = -1;
 
 int left(int i){
   return 2*i + 1;
@@ -31,7 +31,7 @@ int father(int i){
 }
 void switchNodes(int x, int y){
   struct proc *aux = pheap[x];
-  int auxIndex = pheap[y]->index
+  int auxIndex = pheap[y]->index;
   pheap[y]->index = pheap[x]->index;
   pheap[x] = pheap[y];
   aux->index = auxIndex;
@@ -417,25 +417,27 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    p = pheap[0];
-    extract(0);
-    if(2147483647 - p->passo < p->passada)
-      evitaOverflow();
-    p->passada += p->passo;
-    p->cpu ++;
-    // Switch to chosen process.  It is the process's job
-    // to release ptable.lock and then reacquire it
-    // before jumping back to us.
-    c->proc = p;
-    switchuvm(p);
-    p->state = RUNNING;
+    if(last>=0){
+      p = pheap[0];
+      extract(0);
+      if(2147483647 - p->passo < p->passada)
+        evitaOverflow();
+      p->passada += p->passo;
+      p->cpu ++;
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
 
-    swtch(&(c->scheduler), p->context);
-    switchkvm();
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
 
-    // Process is done running for now.
-    // It should have changed its p->state before coming back.
-    c->proc = 0;
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+    }
     release(&ptable.lock);
   }
 }
