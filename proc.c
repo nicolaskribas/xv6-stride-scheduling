@@ -223,6 +223,7 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+  insert(p);
 
   release(&ptable.lock);
 }
@@ -289,6 +290,7 @@ fork(int nTickets)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  insert(np);
 
   release(&ptable.lock);
 
@@ -405,7 +407,6 @@ void
 scheduler(void)
 {
   struct proc *p;
-  struct proc *min;
   struct cpu *c = mycpu();
   c->proc = 0;
 
@@ -415,21 +416,8 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    min = 0;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-      if(min == 0)
-        min = p;
-      else if(min->passada > p->passada || (min->passada == p->passada && min->pid < p->pid))
-        min = p;
-
-    }
-    if(min == 0){
-      release(&ptable.lock);
-      continue;
-    }
-    p = min;
+    p = pheap[0];
+    extract(0);
     if(2147483647 - p->passo < p->passada)
       evitaOverflow();
     p->passada += p->passo;
@@ -483,6 +471,7 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+  insert(myproc());
   sched();
   release(&ptable.lock);
 }
@@ -533,6 +522,8 @@ sleep(void *chan, struct spinlock *lk)
   }
   // Go to sleep.
   p->chan = chan;
+  if(p->state == RUNNABLE)
+    extract(p->index);
   p->state = SLEEPING;
 
   sched();
@@ -556,8 +547,10 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+      insert(p);
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -584,6 +577,8 @@ kill(int pid)
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
         p->state = RUNNABLE;
+      else
+        extract(p->index);
       release(&ptable.lock);
       return 0;
     }
