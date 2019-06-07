@@ -51,7 +51,7 @@ struct proc {
   char name[16];               // Process name (debugging)
   int passada;
   int passo;
-  int nodo;
+  int index;
   int cpu;
 };
 

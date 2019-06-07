@@ -14,10 +14,9 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
-struct {
-  struct proc proc[NPROC];
-  int last;
-} pheap;
+struct proc *pheap[NPROC];
+int last;
+
 int left(int i){
   return 2*i + 1;
 }
@@ -30,45 +29,53 @@ int father(int i){
   else
     return i/2;
 }
-void bubbleDown(struct pheap *pheap, int i){
-  menor = i;
-  if(left(i) < pheap.last){
-    if(pheap.proc[left(i)]->passada < pheap.proc[menor]->passada){
+void switchNodes(int x, int y){
+  struct proc *aux = pheap[x];
+  pheap[y]->index = pheap[x]->index;
+  pheap[x] = pheap[y];
+  aux->index = pheap[y]->index;
+  pheap[y] = aux;
+}
+void bubbleDown(int i){
+  int menor = i;
+  if(left(i) <= last){
+    if(pheap[left(i)]->passada < pheap[menor]->passada){
       menor = left(i);
     }
   }
-  if(right(i) < pheap.last){
-    if(pheap.proc[right(i)]->passada < pheap.proc[menor]->passada){
+  if(right(i) <= last){
+    if(pheap[right(i)]->passada < pheap[menor]->passada){
       menor = right(i);
     }
   }
   if(menor != i){
-    switchNodes(pheap, menor, i);
-    bubbleDown(pheap, menor);
+    switchNodes(menor, i);
+    bubbleDown(menor);
   }
 
 }
 
-void bubbleUP(struct pheap *pheap, int i){
-  if(i != 0){
-    if(pheap.proc[father(i)]->passada > pheap.proc[i]->passada){
-      switchNodes(pheap, father(i), i);
-      bubbleUP(pheap, father(i));
+void bubbleUp(int i){
+  if(i > 0){
+    if(pheap[father(i)]->passada > pheap[i]->passada){
+      switchNodes(father(i), i);
+      bubbleUp(father(i));
     }
   }
 }
 
-struct proc *extract(struct pheap *pheap, int i){
-  struct proc *p = pheap.proc[i];
-  pheap.proc[i] = pheap.proc[pheap.last];
-  pheap.last--;
-  bubbleDown(pheap, i);
-  return p;
+void extract(int i){
+  pheap[i]->index = -1;
+  pheap[i] = pheap[last--];
+  pheap[i]->index = i;
+  bubbleDown(i);
+  bubbleUp(i);
 }
 
-void insert(struct pheap *pheap, struct proc *proc){
-  pheap.proc[++pheap.last] = proc;
-  bubbleUP(pheap);
+void insert(struct proc *proc){
+  pheap[++last] = proc;
+  proc->index = last;
+  bubbleUp(last);
 }
 
 static struct proc *initproc;
