@@ -31,9 +31,10 @@ int father(int i){
 }
 void switchNodes(int x, int y){
   struct proc *aux = pheap[x];
+  int auxIndex = pheap[y]->index
   pheap[y]->index = pheap[x]->index;
   pheap[x] = pheap[y];
-  aux->index = pheap[y]->index;
+  aux->index = auxIndex;
   pheap[y] = aux;
 }
 void bubbleDown(int i){
