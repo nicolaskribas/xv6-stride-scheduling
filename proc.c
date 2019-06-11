@@ -7,7 +7,7 @@
 #include "proc.h"
 #include "spinlock.h"
 #define MAX_TICKETS 100
-#define DEFAULT_TICKETS 5
+#define DEFAULT_TICKETS 10
 #define CONSTANTE 1000
 struct {
   struct spinlock lock;

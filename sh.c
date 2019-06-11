@@ -183,7 +183,7 @@ fork1(void)
 {
   int pid;
 
-  pid = fork(1);
+  pid = fork(10000);
   if(pid == -1)
     panic("fork");
   return pid;
