@@ -177,8 +177,8 @@ UPROGS=\
 	_mkdir\
 	_rm\
 	_sh\
-	_testLS1\
-	_testLS2\
+	_test1\
+	_test2\
 	_stressfs\
 	_usertests\
 	_wc\
