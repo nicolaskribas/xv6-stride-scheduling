@@ -6,7 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#define MAX_TICKETS 100
+#define MAX_TICKETS 1000
 #define DEFAULT_TICKETS 10
 #define CONSTANTE 1000
 struct {
