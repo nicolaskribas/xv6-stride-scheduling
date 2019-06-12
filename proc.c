@@ -40,12 +40,12 @@ void switchNodes(int x, int y){
 void bubbleDown(int i){
   int menor = i;
   if(left(i) <= last){
-    if(pheap[left(i)]->passada < pheap[menor]->passada){
+    if(pheap[left(i)]->passada < pheap[menor]->passada || (pheap[left(i)]->passada == pheap[menor]->passada && pheap[left(i)]->pid < pheap[menor]->pid)){
       menor = left(i);
     }
   }
   if(right(i) <= last){
-    if(pheap[right(i)]->passada < pheap[menor]->passada){
+    if(pheap[right(i)]->passada < pheap[menor]->passada || (pheap[right(i)]->passada == pheap[menor]->passada && pheap[right(i)]->pid < pheap[menor]->pid)){
       menor = right(i);
     }
   }
@@ -58,7 +58,7 @@ void bubbleDown(int i){
 
 void bubbleUp(int i){
   if(i > 0){
-    if(pheap[father(i)]->passada > pheap[i]->passada){
+    if(pheap[father(i)]->passada > pheap[i]->passada || (pheap[father(i)]->passada == pheap[i]->passada && pheap[father(i)]->pid > pheap[i]->pid)){
       switchNodes(father(i), i);
       bubbleUp(father(i));
     }
