@@ -24,10 +24,7 @@ int right(int i){
   return 2*i + 2;
 }
 int father(int i){
-  if(i % 2 == 0)
-    return (i - 1)/2;
-  else
-    return i/2;
+  return (i - 1)/2;
 }
 void switchNodes(int x, int y){
   struct proc *aux = pheap[x];
@@ -68,9 +65,11 @@ void bubbleUp(int i){
 void extract(int i){
   pheap[i]->index = -1;
   pheap[i] = pheap[last--];
-  pheap[i]->index = i;
-  bubbleDown(i);
-  bubbleUp(i);
+  if(i-1 != last){
+    pheap[i]->index = i;
+    bubbleDown(i);
+    bubbleUp(i);
+  }
 }
 
 void insert(struct proc *proc){
@@ -617,7 +616,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s Passo: %d Passada: %d CPU: %d ", p->pid, state, p->name, p->passo, p->passada, p->cpu);
+    cprintf("%d %s %s Passo: %d Passada: %d CPU: %d Indice: %d", p->pid, state, p->name, p->passo, p->passada, p->cpu, p->index);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
